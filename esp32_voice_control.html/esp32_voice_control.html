@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>ESP32 BLE Control</title>
+  <style>
+    body {
+      font-family: Arial;
+      text-align: center;
+      margin-top: 50px;
+    }
+    button {
+      padding: 15px;
+      margin: 10px;
+      font-size: 18px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+
+<body>
+
+<h2>ESP32 BLE LED + SERVO CONTROL</h2>
+
+<button onclick="connect()">🔗 Connect ESP32</button>
+
+<br><br>
+
+<h3>LED Control</h3>
+<button onclick="send('1')">💡 ON</button>
+<button onclick="send('0')">💡 OFF</button>
+
+<h3>Servo Control</h3>
+<button onclick="send('A')">0°</button>
+<button onclick="send('B')">90°</button>
+<button onclick="send('C')">180°</button>
+
+<br><br>
+
+<h3>Voice Control</h3>
+<button onclick="startVoice()">🎤 Start Voice</button>
+
+<p id="status">Status: Not Connected</p>
+
+<script>
+let characteristic;
+
+// CONNECT FUNCTION
+async function connect() {
+  try {
+    const device = await navigator.bluetooth.requestDevice({
+      acceptAllDevices: true,
+      optionalServices: ['12345678-1234-1234-1234-1234567890ab']
+    });
+
+    const server = await device.gatt.connect();
+    const service = await server.getPrimaryService('12345678-1234-1234-1234-1234567890ab');
+
+    characteristic = await service.getCharacteristic('abcd1234-5678-1234-5678-abcdef123456');
+
+    document.getElementById("status").innerText = "✅ Connected to ESP32";
+  } catch (error) {
+    alert("Connection failed: " + error);
+  }
+}
+
+// SEND DATA
+async function send(value) {
+  if (!characteristic) {
+    alert("Please connect first!");
+    return;
+  }
+
+  const encoder = new TextEncoder();
+  await characteristic.writeValue(encoder.encode(value));
+}
+
+// VOICE CONTROL
+function startVoice() {
+  const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+
+  recognition.lang = 'en-US';
+  recognition.start();
+
+  recognition.onresult = function(event) {
+    let command = event.results[0][0].transcript.toLowerCase();
+
+    document.getElementById("status").innerText = "You said: " + command;
+
+    if (command.includes("on")) {
+      send('1');
+    }
+    else if (command.includes("off")) {
+      send('0');
+    }
+    else if (command.includes("zero")) {
+      send('A');
+    }
+    else if (command.includes("middle")) {
+      send('B');
+    }
+    else if (command.includes("full")) {
+      send('C');
+    }
+  };
+}
+</script>
+
+</body>
+</html>
